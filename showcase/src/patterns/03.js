@@ -1,5 +1,7 @@
 import React, {
     useState,
+    useEffect,
+    useRef,
     useCallback,
     useLayoutEffect,
     createContext,
@@ -127,12 +129,12 @@ const initialState = {
 
 const MediumClapContext = createContext();
 const {Provider} = MediumClapContext
-const MediumClap = (props) => {
-    const MAXIMUM_USER_CLAP = 50
-    const [clapState, setClapState] = useState(initialState)
-    const {count} = clapState
+const MediumClap = ({children, onClap}) => {
+    const MAXIMUM_USER_CLAP = 50;
+    const [clapState, setClapState] = useState(initialState);
+    const {count, countTotal} = clapState;
 
-    const [{clapRef, clapCountRef, clapTotalRef}, setRefState] = useState({})
+    const [{clapRef, clapCountRef, clapTotalRef}, setRefState] = useState({});
 
     const setRef = useCallback(node => {
         if (node !== null) {
@@ -150,6 +152,22 @@ const MediumClap = (props) => {
         burstEl: clapRef
     })
 
+
+    // useEffect will be invoked if count changes and when component first mounts.  If you only want to invoke
+    // when count changes you will need to keep track of the mount cycle using useRef
+    // useRef are kind of like instance variables.
+    const componentJustMounted = useRef(true);
+
+    useEffect(() => {
+        console.log('useEffect', componentJustMounted);
+        if (componentJustMounted.current) {
+            componentJustMounted.current = false;
+            return
+        }
+        console.log('useEffect', componentJustMounted);
+        onClap(clapState);
+    }, [count]);
+
     const handleClapClick = () => {
         animationTimeline.replay()
 
@@ -159,7 +177,6 @@ const MediumClap = (props) => {
             isClicked: true
         })
     }
-
 
     const memoizedValue = useMemo(() => ({
         ...clapState,
@@ -173,7 +190,7 @@ const MediumClap = (props) => {
                 className={styles.clap}
                 onClick={handleClapClick}
             >
-                {props.children}
+                {children}
             </button>
         </Provider>
     )
@@ -231,12 +248,20 @@ MediumClap.Total = CountTotal;
  ==================================== **/
 
 const Usage = () => {
+    const [count, setCount] = useState(0);
+    const handleClap = (clapState) => {
+        setCount(clapState.count)
+    };
+
     return (
-        <MediumClap>
-            <MediumClap.Icon/>
-            <MediumClap.Count/>
-            <MediumClap.Total/>
-        </MediumClap>
+        <div>
+            <MediumClap onClap={handleClap}>
+                <MediumClap.Icon/>
+                <MediumClap.Count/>
+                <MediumClap.Total/>
+            </MediumClap>
+            <div>{`You have clapped ${count} times`}</div>
+        </div>
     )
 }
 

@@ -15,13 +15,11 @@ const useClapAnimation = ({
                               fadeEl,
                               burstEl
                           }) => {
-    console.log('useClapAnimation');
     const [animationTimeline, setAnimationTimeline] = useState(
         new mojs.Timeline()
     )
 
     useLayoutEffect(() => {
-        console.log('useLayoutEffect');
         if (!bounceEl || !fadeEl || !burstEl) {
             return
         }
@@ -121,7 +119,6 @@ const initialState = {
 }
 
 const MediumClap = () => {
-    console.log('MediumClap - instantiated');
     const MAXIMUM_USER_CLAP = 50
     const [clapState, setClapState] = useState(initialState)
     const {count, countTotal, isClicked} = clapState
@@ -129,7 +126,6 @@ const MediumClap = () => {
     const [{clapRef, clapCountRef, clapTotalRef}, setRefState] = useState({})
 
     const setRef = useCallback(node => {
-        console.log('MediumClap - setRef');
         if (node !== null) {
             setRefState(prevRefState => ({
                 ...prevRefState,
@@ -155,7 +151,6 @@ const MediumClap = () => {
         })
     }
 
-    console.log('MediumClap - pre return')
     return (
         <button
             ref={setRef}
@@ -176,7 +171,6 @@ const MediumClap = () => {
  ==================================== **/
 
 const ClapIcon = ({isClicked}) => {
-    console.log('ClapIcon');
     return (
         <span>
             <svg
@@ -194,7 +188,6 @@ const ClapIcon = ({isClicked}) => {
     )
 }
 const ClapCount = ({count, setRef}) => {
-    console.log('ClapCount');
     return (
         <span ref={setRef} data-refkey='clapCountRef' className={styles.count}>
             +{count}
@@ -202,7 +195,6 @@ const ClapCount = ({count, setRef}) => {
     )
 }
 const CountTotal = ({countTotal, setRef}) => {
-    console.log('CountTotal');
     return (
         <span ref={setRef} data-refkey='clapTotalRef' className={styles.total}>
             {countTotal}
@@ -217,7 +209,6 @@ const CountTotal = ({countTotal, setRef}) => {
  ==================================== **/
 
 const Usage = () => {
-    console.log('Usage');
     return <MediumClap/>
 }
 
