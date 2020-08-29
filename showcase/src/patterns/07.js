@@ -127,6 +127,12 @@ const INITIALSTATE = {
     isClicked: false
 }
 
+// Note that callFnsInSequence must return a function.  This is the (...args)...  Then each
+// function is called with args (event and others ...)
+const callFnsInSequence = (...fns) => (...args) => {
+    fns.forEach(fn => fn && fn(...args))
+}
+
 const useClapState = (initialState = INITIALSTATE) => {
     const MAXIMUM_USER_CLAP = 10;
     const [clapState, setClapState] = useState(initialState);
@@ -141,18 +147,21 @@ const useClapState = (initialState = INITIALSTATE) => {
     }, [count, countTotal]);
 
     // props collection for 'click'
-    const togglerProps = {
-        onClick: updateClapState,
-        'aria-pressed': clapState.isClicked
-    }
+    // Note the deconstruction of onClick AND the default = {}
+    const getTogglerProps = ({onClick, ...otherProps} = {}) => ({
+        onClick: callFnsInSequence(updateClapState, onClick),
+        'aria-pressed': clapState.isClicked,
+        ...otherProps
+    })
     // props collection for 'count'
-    const counterProps = {
+    const getCounterProps = ({...otherProps}) => ({
         count: count,
         'aria-valuemax': MAXIMUM_USER_CLAP,
         'aria-valuemin': 0,
-        'aria-valuenow': count
-    }
-    return {clapState, updateClapState, togglerProps, counterProps}
+        'aria-valuenow': count,
+        ...otherProps
+    })
+    return {clapState, updateClapState, getTogglerProps, getCounterProps}
 }
 
 const useEffectAfterMount = (cb, deps) => {
@@ -231,7 +240,12 @@ const CountTotal = ({countTotal, setRef, ...otherProps}) => {
  ==================================== **/
 
 const Usage = () => {
-    const {clapState, updateClapState, togglerProps, counterProps} = useClapState();
+    const {
+        clapState,
+        updateClapState,
+        getTogglerProps,
+        getCounterProps
+    } = useClapState();
     const {count, countTotal, isClicked} = clapState;
     const [{clapRef, clapCountRef, clapTotalRef}, setRef] = useDOMRef();
 
@@ -251,14 +265,14 @@ const Usage = () => {
         <ClapContainer
             setRef={setRef}
             data-refkey='clapRef'
-            {...togglerProps}
+            {...getTogglerProps()}
         >
             <ClapIcon
                 isClicked={isClicked}/>
             <ClapCount
                 setRef={setRef}
                 data-refkey='clapCountRef'
-                {...counterProps}
+                {...getCounterProps()}
             />
             <CountTotal
                 countTotal={countTotal}
