@@ -9,12 +9,8 @@ import styles from './index.css'
  Hook for Animation
  ==================================== **/
 
-const useClapAnimation = ({
-                              duration: tlDuration,
-                              bounceEl,
-                              fadeEl,
-                              burstEl
-                          }) => {
+
+const useClapAnimation = ({duration: tlDuration, bounceEl, fadeEl, burstEl}) => {
     const [animationTimeline, setAnimationTimeline] = useState(
         new mojs.Timeline()
     )
@@ -109,21 +105,9 @@ const useClapAnimation = ({
 
     return animationTimeline
 }
-/** ====================================
- *      🔰 MediumClap
- ==================================== **/
-const initialState = {
-    count: 0,
-    countTotal: generateRandomNumber(500, 10000),
-    isClicked: false
-}
 
-const MediumClap = () => {
-    const MAXIMUM_USER_CLAP = 50
-    const [clapState, setClapState] = useState(initialState)
-    const {count, countTotal, isClicked} = clapState
-
-    const [{clapRef, clapCountRef, clapTotalRef}, setRefState] = useState({})
+const useDOMRef = () => {
+    const [DOMRef, setRefState] = useState({})
 
     const setRef = useCallback(node => {
         if (node !== null) {
@@ -134,6 +118,39 @@ const MediumClap = () => {
         }
     }, [])
 
+    return [DOMRef, setRef];
+};
+
+const INITIALSTATE = {
+    count: 0,
+    countTotal: generateRandomNumber(500, 10000),
+    isClicked: false
+}
+
+const useClapState = (initialState= INITIALSTATE) => {
+    const MAXIMUM_USER_CLAP = 10;
+    const [clapState, setClapState] = useState(initialState);
+    const {count, countTotal} = clapState;
+
+    const updateClapState = useCallback(() => {
+        setClapState(({count, countTotal}) => ({
+            count: Math.min(count + 1, MAXIMUM_USER_CLAP),
+            countTotal: count < MAXIMUM_USER_CLAP ? countTotal + 1 : countTotal,
+            isClicked: true
+        }))
+    }, [count, countTotal]);
+
+    return [clapState, updateClapState]
+}
+
+/** ====================================
+ *      🔰 MediumClap
+ ==================================== **/
+const MediumClap = () => {
+    const [clapState, updateClapState] = useClapState();
+    const {count, countTotal, isClicked} = clapState;
+    const [{clapRef, clapCountRef, clapTotalRef}, setRef] = useDOMRef();
+
     const animationTimeline = useClapAnimation({
         duration: 300,
         bounceEl: clapCountRef,
@@ -142,13 +159,8 @@ const MediumClap = () => {
     })
 
     const handleClapClick = () => {
-        animationTimeline.replay()
-
-        setClapState({
-            count: Math.min(count + 1, MAXIMUM_USER_CLAP),
-            countTotal: count < MAXIMUM_USER_CLAP ? countTotal + 1 : countTotal,
-            isClicked: true
-        })
+        animationTimeline.replay();
+        updateClapState();
     }
 
     return (
