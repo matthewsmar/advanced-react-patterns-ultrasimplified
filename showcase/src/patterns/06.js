@@ -1,4 +1,4 @@
-import React, {useState, useCallback, useLayoutEffect} from 'react'
+import React, {useState, useCallback, useLayoutEffect, useRef, useEffect} from 'react'
 
 import mojs from 'mo-js'
 import {generateRandomNumber} from '../utils/generateRandomNumber'
@@ -143,6 +143,17 @@ const useClapState = (initialState= INITIALSTATE) => {
     return [clapState, updateClapState]
 }
 
+const useEffectAfterMount = (cb, deps) => {
+  const componentJustMounted = useRef(true)
+
+  useEffect(() => {
+    if (!componentJustMounted.current) {
+      return cb()
+    }
+    componentJustMounted.current = false
+  }, deps)
+};
+
 /** ====================================
  *      🔰 MediumClap
  ==================================== **/
@@ -158,17 +169,17 @@ const MediumClap = () => {
         burstEl: clapRef
     })
 
-    const handleClapClick = () => {
-        animationTimeline.replay();
-        updateClapState();
-    }
+    // Every time count changes, run annimation timeline.
+    useEffectAfterMount(() => {
+        animationTimeline.replay()
+    }, [count])
 
     return (
         <button
             ref={setRef}
             data-refkey='clapRef'
             className={styles.clap}
-            onClick={handleClapClick}
+            onClick={updateClapState}
         >
             <ClapIcon isClicked={isClicked}/>
             <ClapCount count={count} setRef={setRef}/>
