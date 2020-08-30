@@ -1,4 +1,11 @@
-import React, {useState, useCallback, useLayoutEffect, useRef, useEffect} from 'react'
+import React, {
+    useState,
+    useCallback,
+    useLayoutEffect,
+    useRef,
+    useEffect,
+    useReducer
+} from 'react'
 
 import mojs from 'mo-js'
 import {generateRandomNumber} from '../utils/generateRandomNumber'
@@ -9,6 +16,8 @@ import userStyles from './usage.css'
  *          🔰Hook
  Hook for Animation
  ==================================== **/
+
+const MAXIMUM_USER_CLAP = 10;
 
 
 const useClapAnimation = ({duration: tlDuration, bounceEl, fadeEl, burstEl}) => {
@@ -142,11 +151,24 @@ const callFnsInSequence = (...fns) => (...args) => {
     fns.forEach(fn => fn && fn(...args))
 }
 
-const useClapState = (initialState = INITIALSTATE) => {
-    const MAXIMUM_USER_CLAP = 10;
+const internalReducer = ({count, countTotal}, {type, payload}) => {
+    switch (type) {
+        case 'clap':
+            return {
+                count: Math.min(count + 1, MAXIMUM_USER_CLAP),
+                countTotal: count < MAXIMUM_USER_CLAP ? countTotal + 1 : countTotal,
+                isClicked: true
+            }
+        case 'reset':
+            return payload
+        default:
+            return state;
+    }
+}
+const useClapState = (initialState = INITIALSTATE, reducer = initialReducer) => {
     // Hold a reference to the initial state
     const initialStateRef = useRef(initialState);
-    const [clapState, setClapState] = useState(initialState);
+    const [clapState, dispatch] = useReducer(reducer, initialState);
     const {count, countTotal} = clapState;
 
     // Glorified counter
@@ -154,18 +176,12 @@ const useClapState = (initialState = INITIALSTATE) => {
     const prevCount = usePrevious(count);
     const reset = useCallback(() => {
         if (prevCount !== count) {
-            setClapState(initialStateRef.current);
+            dispatch({type: 'reset', payload: initialStateRef.current});
             resetRef.current++;
         }
-    }, [prevCount, count, setClapState]);
+    }, [prevCount, count, dispatch]);
 
-    const updateClapState = useCallback(() => {
-        setClapState(({count, countTotal}) => ({
-            count: Math.min(count + 1, MAXIMUM_USER_CLAP),
-            countTotal: count < MAXIMUM_USER_CLAP ? countTotal + 1 : countTotal,
-            isClicked: true
-        }))
-    }, [count, countTotal]);
+    const updateClapState = () => dispatch({type: 'clap'});
 
     // props collection for 'click'
     // Note the deconstruction of onClick AND the default = {}
@@ -183,6 +199,12 @@ const useClapState = (initialState = INITIALSTATE) => {
         ...otherProps
     })
     return {clapState, updateClapState, getTogglerProps, getCounterProps, reset, resetDep: resetRef.current}
+}
+
+useClapState.reducer = initialReducer;
+useClapState.types = {
+    clap: 'clap',
+    reset: 'reset'
 }
 
 const useEffectAfterMount = (cb, deps) => {
@@ -267,14 +289,23 @@ const userInitialState = {
 }
 
 const Usage = () => {
+    const [timesClapped, setTimesClapped] = useState(0);
+    const isClappedTooMuch = timesClapped >= 7;
+
+    const reducer = (state, action) => {
+        if (action.type === 'clap' && isClappedTooMuch) {
+            return state;
+        }
+        return useClapState.reducer(state, action)
+    };
+
     const {
         clapState,
-        updateClapState,
         getTogglerProps,
         getCounterProps,
         reset,
         resetDep
-    } = useClapState(userInitialState);
+    } = useClapState(userInitialState, reducer);
     const {count, countTotal, isClicked} = clapState;
     const [{clapRef, clapCountRef, clapTotalRef}, setRef] = useDOMRef();
 
@@ -293,6 +324,7 @@ const Usage = () => {
     const [uploadingReset, setUpload] = useState(false);
     useEffectAfterMount(() => {
         setUpload(true);
+        setTimesClapped(0);
         // Now fake some upload to server
         const timer = setTimeout(() => {
             // After timeout is complete, run this function..  That's how timeout works
@@ -301,12 +333,17 @@ const Usage = () => {
         return () => clearTimeout(timer);
     }, [resetDep]);
 
+    const handleClick = () => {
+        setTimesClapped(t => t + 1)
+    }
+
     return (
         <React.Fragment>
             <ClapContainer
                 setRef={setRef}
                 data-refkey='clapRef'
                 {...getTogglerProps()}
+                onClick={handleClick}
             >
                 <ClapIcon
                     isClicked={isClicked}/>
