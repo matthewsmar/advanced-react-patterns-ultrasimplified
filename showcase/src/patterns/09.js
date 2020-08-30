@@ -3,6 +3,7 @@ import React, {useState, useCallback, useLayoutEffect, useRef, useEffect} from '
 import mojs from 'mo-js'
 import {generateRandomNumber} from '../utils/generateRandomNumber'
 import styles from './index.css'
+import userStyles from './usage.css'
 
 /** ====================================
  *          🔰Hook
@@ -121,6 +122,14 @@ const useDOMRef = () => {
     return [DOMRef, setRef];
 };
 
+const usePrevious = (value) => {
+    const ref = useRef();
+    useEffect(() => {
+        ref.current = value
+    });
+    return ref.current
+}
+
 const INITIALSTATE = {
     count: 0,
     countTotal: generateRandomNumber(500, 10000),
@@ -135,8 +144,20 @@ const callFnsInSequence = (...fns) => (...args) => {
 
 const useClapState = (initialState = INITIALSTATE) => {
     const MAXIMUM_USER_CLAP = 10;
+    // Hold a reference to the initial state
+    const initialStateRef = useRef(initialState);
     const [clapState, setClapState] = useState(initialState);
     const {count, countTotal} = clapState;
+
+    // Glorified counter
+    const resetRef = useRef(0);
+    const prevCount = usePrevious(count);
+    const reset = useCallback(() => {
+        if (prevCount !== count) {
+            setClapState(initialStateRef.current);
+            resetRef.current++;
+        }
+    }, [prevCount, count, setClapState]);
 
     const updateClapState = useCallback(() => {
         setClapState(({count, countTotal}) => ({
@@ -161,7 +182,7 @@ const useClapState = (initialState = INITIALSTATE) => {
         'aria-valuenow': count,
         ...otherProps
     })
-    return {clapState, updateClapState, getTogglerProps, getCounterProps}
+    return {clapState, updateClapState, getTogglerProps, getCounterProps, reset, resetDep: resetRef.current}
 }
 
 const useEffectAfterMount = (cb, deps) => {
@@ -239,13 +260,21 @@ const CountTotal = ({countTotal, setRef, ...otherProps}) => {
  may consume the component API
  ==================================== **/
 
+const userInitialState = {
+    count: 0,
+    countTotal: 1000,
+    isClicked: true
+}
+
 const Usage = () => {
     const {
         clapState,
         updateClapState,
         getTogglerProps,
-        getCounterProps
-    } = useClapState();
+        getCounterProps,
+        reset,
+        resetDep
+    } = useClapState(userInitialState);
     const {count, countTotal, isClicked} = clapState;
     const [{clapRef, clapCountRef, clapTotalRef}, setRef] = useDOMRef();
 
@@ -256,29 +285,49 @@ const Usage = () => {
         burstEl: clapRef
     })
 
-    // Every time count changes, run annimation timeline.
+    // Every time count changes, run animation timeline.
     useEffectAfterMount(() => {
         animationTimeline.replay()
     }, [count])
 
+    const [uploadingReset, setUpload] = useState(false);
+    useEffectAfterMount(() => {
+        setUpload(true);
+        // Now fake some upload to server
+        const timer = setTimeout(() => {
+            // After timeout is complete, run this function..  That's how timeout works
+            setUpload(false);
+        }, 3000);
+        return () => clearTimeout(timer);
+    }, [resetDep]);
+
     return (
-        <ClapContainer
-            setRef={setRef}
-            data-refkey='clapRef'
-            {...getTogglerProps()}
-        >
-            <ClapIcon
-                isClicked={isClicked}/>
-            <ClapCount
+        <React.Fragment>
+            <ClapContainer
                 setRef={setRef}
-                data-refkey='clapCountRef'
-                {...getCounterProps()}
-            />
-            <CountTotal
-                countTotal={countTotal}
-                setRef={setRef}
-                data-refkey='clapTotalRef' />
-        </ClapContainer>
-    )}
+                data-refkey='clapRef'
+                {...getTogglerProps()}
+            >
+                <ClapIcon
+                    isClicked={isClicked}/>
+                <ClapCount
+                    setRef={setRef}
+                    data-refkey='clapCountRef'
+                    {...getCounterProps()}
+                />
+                <CountTotal
+                    countTotal={countTotal}
+                    setRef={setRef}
+                    data-refkey='clapTotalRef'/>
+            </ClapContainer>
+            <section>
+                <button onClick={reset} className={userStyles.resetBtn}>Reset</button>
+            </section>
+            <pre className={userStyles.resetMsg}>
+                {uploadingReset && `uploading reset ${resetDep} ...`}
+            </pre>
+        </React.Fragment>
+    )
+}
 
 export default Usage
